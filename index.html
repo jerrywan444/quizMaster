@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Impossible Quiz 2.0</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to right, #ff512f, #dd2476);
+            color: white;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            text-align: center;
+        }
+        .question-box {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+        .answers {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .answer {
+            background: #ffbb33;
+            padding: 15px;
+            margin: 5px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+            font-weight: bold;
+        }
+        .answer:hover {
+            background: #ff8800;
+            transform: scale(1.1);
+        }
+        .score, .timer {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .category-selector {
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            background: #ffbb33;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #ff8800;
+        }
+        .restart-button {
+            display: none;
+            margin-top: 20px;
+        }
+        .troll-image {
+            display: none;
+            margin-top: 20px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="category-selector">
+        <label for="category">Choose a subject:</label>
+        <select id="category">
+            <option value="9">General Knowledge</option>
+            <option value="17">Science & Nature</option>
+            <option value="18">Computer Science</option>
+            <option value="19">Mathematics</option>
+            <option value="22">Geography</option>
+            <option value="23">History</option>
+            <option value="24">Politics</option>
+            <option value="25">Art</option>
+            <option value="26">Celebrities</option>
+        </select>
+        <button onclick="startGame()">Start Quiz</button>
+    </div>
+    <div class="question-box">
+        <h2 id="question">Select a category to start</h2>
+        <div class="answers" id="answers"></div>
+        <div class="score">Score: <span id="score">0</span></div>
+        <div class="timer">Time Left: <span id="timer">15</span> sec</div>
+    </div>
+    <img id="trollImage" class="troll-image" src="https://i.imgflip.com/1ur9b0.jpg" alt="Troll Face">
+    <button class="restart-button" onclick="restartGame()">Restart Game</button>
+
+    <audio id="correctSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+    <audio id="wrongSound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+
+    <script>
+        async function fetchQuestions(category) {
+            try {
+                const response = await fetch(`https://opentdb.com/api.php?amount=50&category=${category}&type=multiple`);
+                if (!response.ok) throw new Error("Network response was not ok");
+                const data = await response.json();
+                if (!data.results || data.results.length === 0) throw new Error("No questions available");
+                return data.results.map(q => ({
+                    question: q.question,
+                    answers: [...q.incorrect_answers, q.correct_answer].sort(() => Math.random() - 0.5),
+                    correct: q.correct_answer
+                }));
+            } catch (error) {
+                console.error("Failed to fetch questions:", error.message);
+                return [];
+            }
+        }
+
+        let questions = [];
+        let currentQuestion = 0;
+        let score = 0;
+        let hasAnswered = false;
+        let timer;
+        let timeLeft;
+        let gameOver = false;
+
+        function startTimer() {
+            timeLeft = 15;
+            document.getElementById("timer").innerText = timeLeft;
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById("timer").innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        async function startGame() {
+            gameOver = false;
+            document.getElementById("trollImage").style.display = "none";
+            const category = document.getElementById("category").value;
+            questions = await fetchQuestions(category);
+            currentQuestion = 0;
+            score = 0;
+            document.getElementById("score").innerText = score;
+            document.querySelector(".restart-button").style.display = "none";
+            if (questions.length > 0) {
+                loadQuestion();
+                startTimer();
+            } else {
+                document.getElementById("question").innerText = "Failed to load questions. Try again later.";
+            }
+        }
+
+        function loadQuestion() {
+            if (currentQuestion >= questions.length || gameOver) {
+                endGame();
+                return;
+            }
+            hasAnswered = false;
+            const q = questions[currentQuestion];
+            document.getElementById("question").innerHTML = q.question;
+            const answersDiv = document.getElementById("answers");
+            answersDiv.innerHTML = "";
+            q.answers.forEach(answer => {
+                const btn = document.createElement("div");
+                btn.classList.add("answer");
+                btn.innerHTML = answer;
+                btn.onclick = () => checkAnswer(answer, q.correct, btn);
+                answersDiv.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selected, correct, button) {
+            if (hasAnswered || gameOver) return;
+            hasAnswered = true;
+            if (selected === correct) {
+                document.getElementById("correctSound").play();
+                button.style.background = "#00cc66";
+                score++;
+                document.getElementById("score").innerText = score;
+                timeLeft += 10;
+            } else {
+                document.getElementById("wrongSound").play();
+                button.style.background = "#cc0000";
+            }
+            setTimeout(() => {
+                currentQuestion++;
+                loadQuestion();
+            }, 1000);
+        }
+
+        function endGame() {
+            gameOver = true;
+            clearInterval(timer);
+            document.querySelector(".restart-button").style.display = "block";
+            if (score < 5) document.getElementById("trollImage").style.display = "block";
+        }
+    </script>
+</body>
+</html>

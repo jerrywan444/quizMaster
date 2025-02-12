@@ -13,7 +13,7 @@
             height: 100vh;
             background: linear-gradient(to right, #ff512f, #dd2476);
             color: white;
-            font-family: 'Bebas Neue', Poppins , Roboto ;
+            font-family: 'Bebas Neue', Poppins, Roboto;
             text-align: center;
         }
         .question-box {
@@ -78,12 +78,15 @@
             margin-top: 20px;
             max-width: 300px;
         }
+        .loading {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="category-selector">
         <label for="category">Choose a subject:</label>
-        <select id="category">
+        <select id="category" aria-label="Category Selector">
             <option value="9">General Knowledge</option>
             <option value="17">Science & Nature</option>
             <option value="18">Computer Science</option>
@@ -94,7 +97,7 @@
             <option value="25">Art</option>
             <option value="26">Celebrities</option>
         </select>
-        <button onclick="startGame()">Start Quiz</button>
+        <button aria-label="Start Quiz Button" onclick="startGame()">Start Quiz</button>
     </div>
     <div class="question-box">
         <h2 id="question">Select a category to start</h2>
@@ -103,13 +106,15 @@
         <div class="timer">Time Left: <span id="timer">15</span> sec</div>
     </div>
     <img id="trollImage" class="troll-image" src="https://i.imgflip.com/1ur9b0.jpg" alt="Troll Face">
-    <button class="restart-button" onclick="restartGame()">Restart Game</button>
+    <button class="restart-button" aria-label="Restart Game Button" onclick="restartGame()">Restart Game</button>
+    <div class="loading" id="loading">Loading...</div>
 
     <audio id="correctSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
     <audio id="wrongSound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
 
     <script>
         async function fetchQuestions(category) {
+            document.getElementById('loading').style.display = 'block';
             try {
                 const response = await fetch(`https://opentdb.com/api.php?amount=50&category=${category}&type=multiple`);
                 if (!response.ok) throw new Error("Network response was not ok");
@@ -123,6 +128,8 @@
             } catch (error) {
                 console.error("Failed to fetch questions:", error.message);
                 return [];
+            } finally {
+                document.getElementById('loading').style.display = 'none';
             }
         }
 
